@@ -4,370 +4,332 @@ const path = require("path");
 const os = require("os");
 const { v4: uuidv4 } = require("uuid");
 
-// ─── PRESETS DE MASTER ────────────────────────────────────────────────
-// Voz à frente, trilha bem discreta (mais baixa)
+// ─── PRESETS DE MASTER (BOOSTED) ──────────────────────────────────────
 const PRESETS = {
   nd_padrao: {
-    comp: 0.25, width: 1.35, limit: 0.32, ceiling: -0.3, release: 1.2,
-    bgVol: 0.18, fadeIn: 1.2, fadeOut: 0.6, voicePreset: "varejo",
+    comp: 0.30, width: 1.35, limit: 0.20, ceiling: -0.05, release: 1.0,
+    bgVol: 0.24, fadeIn: 1.2, fadeOut: 0.6, voicePreset: "nd_padrao",
+    masterBoostDb: 4.0,
   },
-  nd_agressivo: {
-    comp: 0.32, width: 1.42, limit: 0.42, ceiling: -0.3, release: 1.0,
-    bgVol: 0.20, fadeIn: 1.2, fadeOut: 0.6, voicePreset: "varejo",
-  },
-  nd_voice: {
-    comp: 0.20, width: 1.15, limit: 0.25, ceiling: -0.3, release: 1.4,
-    bgVol: 0.00, fadeIn: 2.0, fadeOut: 2.0, voicePreset: "institucional",
-  },
-  nd_jingle: {
-    comp: 0.34, width: 1.38, limit: 0.44, ceiling: -0.3, release: 1.0,
-    bgVol: 0.32, fadeIn: 1.0, fadeOut: 0.6, voicePreset: "jingle",
-  },
-  nd_institucional: {
-    comp: 0.22, width: 1.25, limit: 0.30, ceiling: -0.3, release: 1.3,
-    bgVol: 0.15, fadeIn: 1.8, fadeOut: 0.6, voicePreset: "institucional",
-  },
-};
-
-// Aliases
-PRESETS.varejo = PRESETS.nd_padrao;
-PRESETS.institucional = PRESETS.nd_institucional;
-PRESETS.radio_indoor = PRESETS.nd_padrao;
-PRESETS.jingle = PRESETS.nd_jingle;
-PRESETS.politica = PRESETS.nd_institucional;
-
-// ─── PRESETS DE VOZ ───────────────────────────────────────────────────
-// Voz à frente, com leve compressão para presença consistente
-// comp: { threshold (dB), ratio, attack (ms), release (ms), makeup }
-const VOICE_PRESETS = {
   varejo: {
-    hpf: 75,
-    presenceFreq: 3000,
-    presenceGain: 1.2,
-    presenceQ: 1.0,
-    deesserFreq: 6500,
-    deesserGain: -1.2,
-    comp: { threshold: -18, ratio: 2.2, attack: 8, release: 180, makeup: 1.05 },
-    loudnormI: -19,
-    loudnormLRA: 14,
-    volume: 0.55,
+    comp: 0.32, width: 1.40, limit: 0.18, ceiling: -0.05, release: 0.9,
+    bgVol: 0.26, fadeIn: 1.0, fadeOut: 0.5, voicePreset: "varejo",
+    masterBoostDb: 5.0,
   },
   institucional: {
-    hpf: 75,
-    presenceFreq: 2800,
-    presenceGain: 0.9,
-    presenceQ: 1.0,
-    deesserFreq: 6500,
-    deesserGain: -1.0,
-    comp: { threshold: -20, ratio: 2.0, attack: 10, release: 220, makeup: 1.04 },
-    loudnormI: -19.5,
-    loudnormLRA: 15,
-    volume: 0.52,
+    comp: 0.26, width: 1.30, limit: 0.22, ceiling: -0.05, release: 1.2,
+    bgVol: 0.22, fadeIn: 1.5, fadeOut: 0.8, voicePreset: "institucional",
+    masterBoostDb: 3.5,
   },
-  radio_indoor: {
-    hpf: 80,
-    presenceFreq: 3200,
-    presenceGain: 1.4,
-    presenceQ: 1.0,
-    deesserFreq: 6500,
-    deesserGain: -1.3,
-    comp: { threshold: -18, ratio: 2.4, attack: 8, release: 180, makeup: 1.06 },
-    loudnormI: -19,
-    loudnormLRA: 14,
-    volume: 0.56,
+  politica: {
+    comp: 0.30, width: 1.35, limit: 0.20, ceiling: -0.05, release: 1.0,
+    bgVol: 0.24, fadeIn: 1.2, fadeOut: 0.6, voicePreset: "politica",
+    masterBoostDb: 4.5,
   },
   jingle: {
-    hpf: 80,
-    presenceFreq: 3000,
-    presenceGain: 1.2,
-    presenceQ: 1.0,
-    deesserFreq: 6500,
-    deesserGain: -1.0,
-    comp: { threshold: -17, ratio: 2.5, attack: 8, release: 160, makeup: 1.06 },
-    loudnormI: -18.5,
-    loudnormLRA: 13,
-    volume: 0.58,
+    comp: 0.32, width: 1.40, limit: 0.18, ceiling: -0.05, release: 0.9,
+    bgVol: 0.30, fadeIn: 0.5, fadeOut: 0.5, voicePreset: "varejo",
+    masterBoostDb: 5.0,
+  },
+  dialogo: {
+    comp: 0.28, width: 1.35, limit: 0.22, ceiling: -0.05, release: 1.1,
+    bgVol: 0.22, fadeIn: 1.0, fadeOut: 0.6, voicePreset: "nd_padrao",
+    masterBoostDb: 4.0,
+  },
+  radio_fm_br: {
+    comp: 0.34, width: 1.45, limit: 0.16, ceiling: -0.05, release: 0.8,
+    bgVol: 0.26, fadeIn: 1.0, fadeOut: 0.5, voicePreset: "radio_fm_br",
+    masterBoostDb: 5.5,
   },
 };
 
-// ─── Defaults ─────────────────────────────────────────────────────────
-// Trilha bem discreta: teto baixo e compressão firme
-const DEFAULT_BG_VOLUME_MAX_DB = -12.0;
-const DEFAULT_BG_COMPRESS_THRESHOLD_DB = -16;
-const DEFAULT_BG_COMPRESS_RATIO = 1.8;
+// ─── PRESETS DE VOZ (loudnorm mais alto) ──────────────────────────────
+const VOICE_PRESETS = {
+  nd_padrao: {
+    highpass: 80, presence: 3000, presenceGain: 3, presenceQ: 1.0,
+    compThresh: -18, compRatio: 3, compAttack: 0.005, compRelease: 0.15,
+    loudnormI: -12, loudnormLRA: 7, loudnormTP: -0.5,
+    volume: 1.0,
+  },
+  varejo: {
+    highpass: 90, presence: 3200, presenceGain: 4, presenceQ: 1.1,
+    compThresh: -16, compRatio: 4, compAttack: 0.003, compRelease: 0.12,
+    loudnormI: -11, loudnormLRA: 6, loudnormTP: -0.5,
+    volume: 1.05,
+  },
+  institucional: {
+    highpass: 80, presence: 2800, presenceGain: 2.5, presenceQ: 0.9,
+    compThresh: -19, compRatio: 2.8, compAttack: 0.006, compRelease: 0.18,
+    loudnormI: -13, loudnormLRA: 8, loudnormTP: -0.5,
+    volume: 0.95,
+  },
+  politica: {
+    highpass: 85, presence: 3000, presenceGain: 3.5, presenceQ: 1.0,
+    compThresh: -17, compRatio: 3.5, compAttack: 0.004, compRelease: 0.13,
+    loudnormI: -12, loudnormLRA: 7, loudnormTP: -0.5,
+    volume: 1.0,
+  },
+  radio_fm_br: {
+    highpass: 90, presence: 3200, presenceGain: 4, presenceQ: 1.1,
+    compThresh: -15, compRatio: 4.5, compAttack: 0.003, compRelease: 0.10,
+    loudnormI: -10, loudnormLRA: 3, loudnormTP: -0.5,
+    volume: 1.1,
+  },
+};
 
-// Trilha termina JUNTO com a voz (sem gap)
-const BG_END_GAP_SEC = 0;
+const FFMPEG = process.env.FFMPEG_PATH || "ffmpeg";
 
-// ─── Utilidades ───────────────────────────────────────────────────────
-function runFfmpeg(args) {
-  try {
-    execFileSync("ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
-  } catch (err) {
-    const stderr = err.stderr ? err.stderr.toString() : String(err);
-    throw new Error(`ffmpeg failed: ${stderr.substring(0, 700)}`);
-  }
+function buildVoiceFilter(vp) {
+  return [
+    `highpass=f=${vp.highpass}`,
+    `equalizer=f=${vp.presence}:t=q:w=${vp.presenceQ}:g=${vp.presenceGain}`,
+    `acompressor=threshold=${vp.compThresh}dB:ratio=${vp.compRatio}:attack=${Math.round(vp.compAttack * 1000)}:release=${Math.round(vp.compRelease * 1000)}:makeup=2`,
+    `loudnorm=I=${vp.loudnormI}:LRA=${vp.loudnormLRA}:TP=${vp.loudnormTP}`,
+    `volume=${vp.volume}`,
+  ].join(",");
 }
 
-function ffprobeDuration(file) {
-  try {
-    const out = execFileSync("ffprobe", [
-      "-v", "error",
-      "-show_entries", "format=duration",
-      "-of", "default=noprint_wrappers=1:nokey=1",
-      file,
-    ]).toString().trim();
-    return parseFloat(out) || 0;
-  } catch {
-    return 0;
-  }
+function tmpFile(ext = "mp3") {
+  return path.join(os.tmpdir(), `${uuidv4()}.${ext}`);
 }
 
-async function downloadFile(url, dest) {
+async function downloadToTmp(url, ext = "mp3") {
+  const out = tmpFile(ext);
   const resp = await fetch(url);
-  if (!resp.ok) {
-    throw new Error(`download failed ${resp.status}: ${url}`);
-  }
+  if (!resp.ok) throw new Error(`Download failed: ${resp.status} ${url}`);
   const buf = Buffer.from(await resp.arrayBuffer());
-  fs.writeFileSync(dest, buf);
-  return dest;
-}
-
-function tmpFile(ext) {
-  return path.join(os.tmpdir(), `mix-${uuidv4()}.${ext}`);
-}
-
-function dbToLinear(db) {
-  return Math.pow(10, db / 20);
-}
-
-// Mantém o volume da trilha fixo pelo preset (sem override por request).
-function resolveBgVol(fallbackLinear) {
-  return fallbackLinear;
-}
-
-// Resolve gap final da trilha (segundos antes do fim da voz)
-// Por padrão 0 — trilha termina junto com a voz
-function resolveBgEndGap(opts) {
-  let gap = BG_END_GAP_SEC;
-  if (typeof opts.bgEndOffset === "number") gap = opts.bgEndOffset;
-  else if (typeof opts.bg_end_offset === "number") gap = opts.bg_end_offset;
-  return Math.max(gap, 0);
-}
-
-// Resolve teto absoluto da trilha (dB) — fixo (sem override por request)
-function resolveBgVolumeMax() {
-  return DEFAULT_BG_VOLUME_MAX_DB;
-}
-
-// ─── Limpeza de take ──────────────────────────────────────────────────
-function cleanTake(inputFile, useIsolator = false) {
-  const out = tmpFile("wav");
-  const filters = [
-    "highpass=f=75",
-    "afftdn=nf=-18",
-    "loudnorm=I=-20:TP=-1.5:LRA=15",
-  ];
-  runFfmpeg([
-    "-i", inputFile,
-    "-af", filters.join(","),
-    "-y", out,
-  ]);
+  fs.writeFileSync(out, buf);
   return out;
 }
 
-// ─── Cadeia da voz ────────────────────────────────────────────────────
-function buildVoiceChain(preset) {
-  const v = VOICE_PRESETS[preset] || VOICE_PRESETS.varejo;
-  const lra = v.loudnormLRA || 14;
-  const c = v.comp || { threshold: -18, ratio: 2.2, attack: 8, release: 180, makeup: 1.05 };
-  return [
-    `highpass=f=${v.hpf}`,
-    `equalizer=f=${v.presenceFreq}:t=q:w=${v.presenceQ}:g=${v.presenceGain}`,
-    `equalizer=f=${v.deesserFreq}:t=q:w=2:g=${v.deesserGain}`,
-    `acompressor=threshold=${c.threshold}dB:ratio=${c.ratio}:attack=${c.attack}:release=${c.release}:makeup=${c.makeup}`,
-    `loudnorm=I=${v.loudnormI}:TP=-1.5:LRA=${lra}`,
-    `volume=${v.volume.toFixed(3)}`,
-  ].join(",");
+async function uploadResult(supabase, filePath, orderId, ext = "mp3", contentType = "audio/mpeg") {
+  const fileName = `${orderId || uuidv4()}_${Date.now()}.${ext}`;
+  const buf = fs.readFileSync(filePath);
+  const { error } = await supabase.storage
+    .from("order-files")
+    .upload(fileName, buf, { contentType, upsert: true });
+  if (error) throw error;
+  const { data } = supabase.storage.from("order-files").getPublicUrl(fileName);
+  return data.publicUrl;
 }
 
-// ─── MIX padrão voz + trilha ──────────────────────────────────────────
+// ─── MIX PADRÃO (voz + trilha) ────────────────────────────────────────
 async function processStandardMix(opts) {
   const {
-    voiceUrl,
-    bgUrl,
-    preset = "nd_padrao",
-    outputFile = tmpFile("mp3"),
+    voiceUrl, bgUrl, preset = "nd_padrao", orderId, supabase,
+    bgVolumeDb, bgEndOffset = 0.5, bgVolumeMaxDb = -12,
+    bgCompress = true, bgCompressThresholdDb = -18, bgCompressRatio = 4,
   } = opts;
 
   const p = PRESETS[preset] || PRESETS.nd_padrao;
-  const voiceFile = tmpFile("mp3");
-  const bgFile = tmpFile("mp3");
+  const vp = VOICE_PRESETS[p.voicePreset] || VOICE_PRESETS.nd_padrao;
 
-  await Promise.all([
-    downloadFile(voiceUrl, voiceFile),
-    downloadFile(bgUrl, bgFile),
-  ]);
+  const voiceFile = await downloadToTmp(voiceUrl);
+  const bgFile = bgUrl ? await downloadToTmp(bgUrl) : null;
+  const outFile = tmpFile("mp3");
 
-  const voiceDur = ffprobeDuration(voiceFile);
+  // BG volume em dB → linear (default do preset se não passado)
+  const bgVolLinear = typeof bgVolumeDb === "number" && bgVolumeDb !== -1
+    ? Math.pow(10, bgVolumeDb / 20)
+    : p.bgVol;
 
-  // Gap final da trilha (padrão 0 — trilha termina junto com a voz)
-  const bgEndGap = resolveBgEndGap(opts);
-  const bgEndTime = Math.max(
-    p.fadeIn + p.fadeOut + 0.1,
-    voiceDur - bgEndGap
-  );
-  const fadeOutStart = Math.max(p.fadeIn, bgEndTime - p.fadeOut);
-  const totalDur = voiceDur + 0.5;
+  // Duração da voz
+  const voiceDur = parseFloat(execFileSync("ffprobe", [
+    "-v", "error", "-show_entries", "format=duration",
+    "-of", "default=noprint_wrappers=1:nokey=1", voiceFile,
+  ]).toString().trim());
 
-  const bgVol = resolveBgVol(p.bgVol);
-  const compThr =
-    typeof opts.bgCompressThreshold === "number"
-      ? opts.bgCompressThreshold
-      : (typeof opts.bg_compress_threshold === "number"
-        ? opts.bg_compress_threshold
-        : DEFAULT_BG_COMPRESS_THRESHOLD_DB);
-  const compRatio =
-    typeof opts.bgCompressRatio === "number"
-      ? opts.bgCompressRatio
-      : (typeof opts.bg_compress_ratio === "number"
-        ? opts.bg_compress_ratio
-        : DEFAULT_BG_COMPRESS_RATIO);
+  const totalDur = voiceDur + p.fadeOut + 0.3;
+  const bgEndTime = Math.max(p.fadeIn, voiceDur - bgEndOffset);
 
-  const bgMaxDb = resolveBgVolumeMax();
-  const bgMaxLin = dbToLinear(bgMaxDb);
-  const masterCeiling = dbToLinear(p.ceiling ?? -0.8);
+  let filter;
+  if (bgFile) {
+    const bgChain = [
+      `volume=${bgVolLinear}`,
+      bgCompress
+        ? `acompressor=threshold=${bgCompressThresholdDb}dB:ratio=${bgCompressRatio}:attack=10:release=200:makeup=1`
+        : null,
+      `volume=${Math.pow(10, bgVolumeMaxDb / 20)}:eval=once`,
+      `afade=t=in:st=0:d=${p.fadeIn}`,
+      `afade=t=out:st=${bgEndTime}:d=${p.fadeOut}`,
+      `apad`,
+    ].filter(Boolean).join(",");
 
-  const voiceChain = buildVoiceChain(p.voicePreset);
-  const bgChain = [
-    "highpass=f=35",
-    `acompressor=threshold=${compThr}dB:ratio=${compRatio}:attack=20:release=250:makeup=1.0`,
-    `volume=${bgVol.toFixed(4)}`,
-    `afade=t=in:st=0:d=${p.fadeIn}`,
-    `afade=t=out:st=${fadeOutStart.toFixed(2)}:d=${p.fadeOut}`,
-    `atrim=0:${bgEndTime.toFixed(2)}`,
-    `apad=pad_dur=${bgEndGap + 0.5}`,
-    `alimiter=limit=${bgMaxLin.toFixed(4)}:level=disabled:asc=1`,
-  ].join(",");
+    filter =
+      `[0:a]${buildVoiceFilter(vp)}[v];` +
+      `[1:a]aloop=loop=-1:size=2e9,${bgChain}[b];` +
+      `[v][b]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,` +
+      `volume=${p.masterBoostDb}dB,` +
+      `acompressor=threshold=-14dB:ratio=6:attack=3:release=${Math.round(p.release * 1000)}:makeup=3,` +
+      `alimiter=limit=${p.limit}:level=disabled:attack=1:release=50,` +
+      `volume=${p.ceiling}dB[mix]`;
+  } else {
+    filter =
+      `[0:a]${buildVoiceFilter(vp)},` +
+      `volume=${p.masterBoostDb}dB,` +
+      `acompressor=threshold=-14dB:ratio=6:attack=3:release=${Math.round(p.release * 1000)}:makeup=3,` +
+      `alimiter=limit=${p.limit}:level=disabled:attack=1:release=50,` +
+      `volume=${p.ceiling}dB[mix]`;
+  }
 
-  const filter = [
-    `[0:a]${voiceChain}[v]`,
-    `[1:a]${bgChain}[b]`,
-    `[v][b]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[mix]`,
-    `[mix]alimiter=limit=${masterCeiling.toFixed(4)}:level=disabled:asc=1[out]`,
-  ].join(";");
-
-  runFfmpeg([
-    "-i", voiceFile,
-    "-stream_loop", "-1",
-    "-i", bgFile,
+  const args = ["-y", "-i", voiceFile];
+  if (bgFile) args.push("-i", bgFile);
+  args.push(
     "-filter_complex", filter,
-    "-map", "[out]",
-    "-t", totalDur.toFixed(2),
+    "-map", "[mix]",
+    "-t", totalDur.toString(),
     "-c:a", "libmp3lame",
     "-b:a", "192k",
     "-ar", "44100",
     "-ac", "2",
-    "-y", outputFile,
-  ]);
+    outFile,
+  );
 
-  try {
-    fs.unlinkSync(voiceFile);
-    fs.unlinkSync(bgFile);
-  } catch {}
+  console.log("[mixer] FFmpeg standard mix:", args.join(" "));
+  execFileSync(FFMPEG, args, { stdio: "inherit" });
 
-  return outputFile;
+  const url = await uploadResult(supabase, outFile, orderId);
+  try { fs.unlinkSync(voiceFile); } catch {}
+  if (bgFile) try { fs.unlinkSync(bgFile); } catch {}
+  try { fs.unlinkSync(outFile); } catch {}
+  return url;
 }
 
-// ─── MIX com jingle ───────────────────────────────────────────────────
+// ─── MIX COM JINGLE (sidechain ducking) ───────────────────────────────
 async function processJingleMix(opts) {
   const {
-    voiceUrl,
-    jingleUrl,
-    preset = "nd_jingle",
-    jingleVoiceStart = 3,
-    jingleEndTime,
-    outputFile = tmpFile("mp3"),
+    voiceUrl, jingleUrl, preset = "jingle", orderId, supabase,
+    jingleVoiceStart = 3, jingleEndTime,
   } = opts;
 
-  const p = PRESETS[preset] || PRESETS.nd_jingle;
-  const voiceFile = tmpFile("mp3");
-  const jingleFile = tmpFile("mp3");
+  const p = PRESETS[preset] || PRESETS.jingle;
+  const vp = VOICE_PRESETS[p.voicePreset] || VOICE_PRESETS.varejo;
 
-  await Promise.all([
-    downloadFile(voiceUrl, voiceFile),
-    downloadFile(jingleUrl, jingleFile),
-  ]);
+  const voiceFile = await downloadToTmp(voiceUrl);
+  const jingleFile = await downloadToTmp(jingleUrl);
+  const outFile = tmpFile("mp3");
 
-  const voiceDur = ffprobeDuration(voiceFile);
-  const jingleDur = ffprobeDuration(jingleFile);
-  const endTime = jingleEndTime || jingleVoiceStart + voiceDur + 2;
-  const totalDur = Math.max(jingleDur, endTime + 1);
+  const voiceDur = parseFloat(execFileSync("ffprobe", [
+    "-v", "error", "-show_entries", "format=duration",
+    "-of", "default=noprint_wrappers=1:nokey=1", voiceFile,
+  ]).toString().trim());
 
-  const voiceChain = buildVoiceChain(p.voicePreset);
-  const masterCeiling = dbToLinear(p.ceiling ?? -0.8);
-  const jingleVol = resolveBgVol(p.bgVol);
+  const jingleDur = parseFloat(execFileSync("ffprobe", [
+    "-v", "error", "-show_entries", "format=duration",
+    "-of", "default=noprint_wrappers=1:nokey=1", jingleFile,
+  ]).toString().trim());
 
-  const filter = [
-    `[0:a]${voiceChain},adelay=${Math.round(jingleVoiceStart * 1000)}|${Math.round(jingleVoiceStart * 1000)}[v]`,
-    `[1:a]volume=${jingleVol.toFixed(4)}[j]`,
-    `[j][v]sidechaincompress=threshold=0.08:ratio=4:attack=10:release=350[ducked]`,
-    `[ducked][v]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[mix]`,
-    `[mix]alimiter=limit=${masterCeiling.toFixed(4)}:level=disabled:asc=1[out]`,
-  ].join(";");
+  const totalDur = Math.max(jingleDur, jingleVoiceStart + voiceDur + 1);
 
-  runFfmpeg([
-    "-i", voiceFile,
-    "-i", jingleFile,
+  // Voz começa em jingleVoiceStart; jingle abaixa 75% durante voz
+  const filter =
+    `[0:a]${buildVoiceFilter(vp)},adelay=${Math.round(jingleVoiceStart * 1000)}|${Math.round(jingleVoiceStart * 1000)}[v];` +
+    `[1:a]volume=1.0[j];` +
+    `[j][v]sidechaincompress=threshold=0.05:ratio=8:attack=20:release=400:makeup=1[ducked];` +
+    `[ducked][v]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0,` +
+    `volume=${p.masterBoostDb}dB,` +
+    `acompressor=threshold=-14dB:ratio=6:attack=3:release=${Math.round(p.release * 1000)}:makeup=3,` +
+    `alimiter=limit=${p.limit}:level=disabled:attack=1:release=50,` +
+    `volume=${p.ceiling}dB[mix]`;
+
+  const args = [
+    "-y", "-i", voiceFile, "-i", jingleFile,
     "-filter_complex", filter,
-    "-map", "[out]",
-    "-t", totalDur.toFixed(2),
+    "-map", "[mix]",
+    "-t", totalDur.toString(),
     "-c:a", "libmp3lame",
     "-b:a", "192k",
     "-ar", "44100",
     "-ac", "2",
-    "-y", outputFile,
-  ]);
+    outFile,
+  ];
 
-  try {
-    fs.unlinkSync(voiceFile);
-    fs.unlinkSync(jingleFile);
-  } catch {}
+  console.log("[mixer] FFmpeg jingle mix:", args.join(" "));
+  execFileSync(FFMPEG, args, { stdio: "inherit" });
 
-  return outputFile;
+  const url = await uploadResult(supabase, outFile, orderId);
+  try { fs.unlinkSync(voiceFile); } catch {}
+  try { fs.unlinkSync(jingleFile); } catch {}
+  try { fs.unlinkSync(outFile); } catch {}
+  return url;
 }
 
-// ─── Voz solo ─────────────────────────────────────────────────────────
+// ─── VOZ PURA (sem trilha) ────────────────────────────────────────────
 async function processVoiceOnly(opts) {
-  const {
-    voiceUrl,
-    preset = "nd_voice",
-    outputFile = tmpFile("mp3"),
-  } = opts;
+  const { voiceUrl, preset = "nd_padrao", orderId, supabase } = opts;
+  const p = PRESETS[preset] || PRESETS.nd_padrao;
+  const vp = VOICE_PRESETS[p.voicePreset] || VOICE_PRESETS.nd_padrao;
 
-  const p = PRESETS[preset] || PRESETS.nd_voice;
-  const voiceFile = tmpFile("mp3");
-  await downloadFile(voiceUrl, voiceFile);
+  const voiceFile = await downloadToTmp(voiceUrl);
+  const outFile = tmpFile("mp3");
 
-  const voiceChain = buildVoiceChain(p.voicePreset);
-  const filter = `[0:a]${voiceChain}[out]`;
+  const filter =
+    `[0:a]${buildVoiceFilter(vp)},` +
+    `volume=${p.masterBoostDb}dB,` +
+    `acompressor=threshold=-14dB:ratio=6:attack=3:release=${Math.round(p.release * 1000)}:makeup=3,` +
+    `alimiter=limit=${p.limit}:level=disabled:attack=1:release=50,` +
+    `volume=${p.ceiling}dB[mix]`;
 
-  runFfmpeg([
-    "-i", voiceFile,
+  const args = [
+    "-y", "-i", voiceFile,
+    "-filter_complex", filter,
+    "-map", "[mix]",
+    "-c:a", "libmp3lame",
+    "-b:a", "192k",
+    "-ar", "44100",
+    "-ac", "2",
+    outFile,
+  ];
+
+  console.log("[mixer] FFmpeg voice-only:", args.join(" "));
+  execFileSync(FFMPEG, args, { stdio: "inherit" });
+
+  const url = await uploadResult(supabase, outFile, orderId);
+  try { fs.unlinkSync(voiceFile); } catch {}
+  try { fs.unlinkSync(outFile); } catch {}
+  return url;
+}
+
+// ─── CLEAN TAKE (limpeza de cortes) ───────────────────────────────────
+async function cleanTake(opts) {
+  const { voiceUrl, cuts = [], orderId, supabase } = opts;
+  const voiceFile = await downloadToTmp(voiceUrl);
+  const outFile = tmpFile("mp3");
+
+  const cutsArr = Array.isArray(cuts) ? cuts : [];
+  let filter;
+  if (cutsArr.length === 0) {
+    filter = `[0:a]highpass=f=80,acompressor=threshold=-18dB:ratio=3:attack=5:release=150:makeup=2,loudnorm=I=-14:LRA=7:TP=-0.5,volume=1.0[out]`;
+  } else {
+    const segments = [];
+    let lastEnd = 0;
+    cutsArr.forEach((c, i) => {
+      segments.push(`[0:a]atrim=${lastEnd}:${c.start},asetpts=PTS-STARTPTS[s${i}]`);
+      lastEnd = c.end;
+    });
+    segments.push(`[0:a]atrim=start=${lastEnd},asetpts=PTS-STARTPTS[s${cutsArr.length}]`);
+    const concatInputs = segments.map((_, i) => `[s${i}]`).join("");
+    filter = `${segments.join(";")};${concatInputs}concat=n=${segments.length}:v=0:a=1[joined];` +
+      `[joined]highpass=f=80,acompressor=threshold=-18dB:ratio=3:attack=5:release=150:makeup=2,loudnorm=I=-14:LRA=7:TP=-0.5,volume=1.0[out]`;
+  }
+
+  const args = [
+    "-y", "-i", voiceFile,
     "-filter_complex", filter,
     "-map", "[out]",
     "-c:a", "libmp3lame",
     "-b:a", "192k",
     "-ar", "44100",
     "-ac", "2",
-    "-y", outputFile,
-  ]);
+    outFile,
+  ];
 
-  try {
-    fs.unlinkSync(voiceFile);
-  } catch {}
+  execFileSync(FFMPEG, args, { stdio: "inherit" });
 
-  return outputFile;
+  const url = await uploadResult(supabase, outFile, orderId, "mp3", "audio/mpeg");
+  try { fs.unlinkSync(voiceFile); } catch {}
+  try { fs.unlinkSync(outFile); } catch {}
+  return url;
 }
 
 // ─── Entrada principal ────────────────────────────────────────────────
