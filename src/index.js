@@ -2,7 +2,10 @@ const express = require("express");
 const { createClient } = require("@supabase/supabase-js");
 const { mixAudio, cleanTake } = require("./mixer");
 const { v4: uuidv4 } = require("uuid");
+const { execFileSync } = require("child_process");
 const fs = require("fs");
+const os = require("os");
+const path = require("path");
 
 const app = express();
 app.use(express.json({ limit: "50mb" }));
@@ -31,15 +34,15 @@ function authenticate(req, res, next) {
 }
 
 // ─── Helper: upload local file to storage and return public URL ──────
-async function uploadToStorage(localPath, { orderId, suffix = "mixed" }) {
+async function uploadToStorage(localPath, { orderId, suffix = "mixed", ext = "mp3", contentType = "audio/mpeg" }) {
   const buffer = fs.readFileSync(localPath);
   const fileKey = orderId || uuidv4();
   const versionToken = `${Date.now()}_${uuidv4().slice(0, 8)}`;
-  const fileName = `locutions/${fileKey}_${versionToken}_${suffix}.mp3`;
+  const fileName = `locutions/${fileKey}_${versionToken}_${suffix}.${ext}`;
 
   const { error } = await supabase.storage
     .from("order-files")
-    .upload(fileName, buffer, { contentType: "audio/mpeg", upsert: true });
+    .upload(fileName, buffer, { contentType, upsert: true });
 
   try { fs.unlinkSync(localPath); } catch {}
 
@@ -51,9 +54,19 @@ async function uploadToStorage(localPath, { orderId, suffix = "mixed" }) {
   return urlData.publicUrl;
 }
 
+// ─── Helper: download URL to local temp file ─────────────────────────
+async function downloadToTemp(url, ext) {
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`download failed: ${resp.status}`);
+  const buf = Buffer.from(await resp.arrayBuffer());
+  const tmp = path.join(os.tmpdir(), `${uuidv4()}.${ext}`);
+  fs.writeFileSync(tmp, buf);
+  return tmp;
+}
+
 // ─── Health ──────────────────────────────────────────────────────────
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", version: "1.1.0" });
+  res.json({ status: "ok", version: "1.2.0" });
 });
 
 // ─── Main mix endpoint ───────────────────────────────────────────────
@@ -159,8 +172,7 @@ app.post("/mix", authenticate, async (req, res) => {
   }
 });
 
-// ─── NEW: Clean take endpoint ────────────────────────────────────────
-// Recebe URL de áudio + lista de cuts [{start,end}] e devolve URL limpa.
+// ─── Clean take endpoint ─────────────────────────────────────────────
 app.post("/clean-take", authenticate, async (req, res) => {
   const startTime = Date.now();
   try {
@@ -194,6 +206,67 @@ app.post("/clean-take", authenticate, async (req, res) => {
     });
   } catch (err) {
     console.error("[clean-take] Error:", err);
+    res.status(500).json({ error: err.message || "Internal server error" });
+  }
+});
+
+// ─── NEW: Convert MP3 → WAV (or other) endpoint ──────────────────────
+// Body: { mp3_url: string, format?: "wav"|"mp3", order_id?: string }
+// Retorna: { wav_url, audio_url, url, format, success, processing_time_sec }
+app.post("/convert", authenticate, async (req, res) => {
+  const startTime = Date.now();
+  let inputPath = null;
+  let outputPath = null;
+  try {
+    const { mp3_url, format = "wav", order_id } = req.body || {};
+    if (!mp3_url) {
+      return res.status(400).json({ error: "mp3_url is required" });
+    }
+
+    const fmt = String(format).toLowerCase();
+    if (!["wav", "mp3"].includes(fmt)) {
+      return res.status(400).json({ error: "format must be 'wav' or 'mp3'" });
+    }
+
+    console.log(`[convert] Starting: format=${fmt}, order=${order_id || "none"}, src=${mp3_url}`);
+
+    // Detecta extensão da entrada (default mp3)
+    const inputExt = (mp3_url.split("?")[0].split(".").pop() || "mp3").toLowerCase().slice(0, 4);
+    inputPath = await downloadToTemp(mp3_url, inputExt || "mp3");
+    outputPath = path.join(os.tmpdir(), `${uuidv4()}.${fmt}`);
+
+    // FFmpeg: WAV = PCM 16-bit 44.1kHz estéreo. MP3 = 192kbps estéreo.
+    const ffArgs = fmt === "wav"
+      ? ["-y", "-i", inputPath, "-acodec", "pcm_s16le", "-ar", "44100", "-ac", "2", outputPath]
+      : ["-y", "-i", inputPath, "-acodec", "libmp3lame", "-b:a", "192k", "-ar", "44100", "-ac", "2", outputPath];
+
+    execFileSync("ffmpeg", ffArgs, { stdio: "ignore" });
+
+    const contentType = fmt === "wav" ? "audio/wav" : "audio/mpeg";
+    const publicUrl = await uploadToStorage(outputPath, {
+      orderId: order_id,
+      suffix: fmt === "wav" ? "wav" : "converted",
+      ext: fmt,
+      contentType,
+    });
+
+    try { fs.unlinkSync(inputPath); } catch {}
+
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`[convert] Complete in ${elapsed}s: ${publicUrl}`);
+
+    res.json({
+      wav_url: fmt === "wav" ? publicUrl : null,
+      audio_url: publicUrl,
+      url: publicUrl,
+      format: fmt,
+      success: true,
+      processing_time_sec: parseFloat(elapsed),
+    });
+  } catch (err) {
+    console.error("[convert] Error:", err);
+    try { if (inputPath) fs.unlinkSync(inputPath); } catch {}
+    try { if (outputPath) fs.unlinkSync(outputPath); } catch {}
     res.status(500).json({ error: err.message || "Internal server error" });
   }
 });
